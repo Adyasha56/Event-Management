@@ -1,6 +1,6 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { Readable } from 'stream';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -9,15 +9,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure storage
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'event-platform',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 800, height: 600, crop: 'limit' }],
-  },
-});
+// Use memory storage (files stored in RAM temporarily)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -32,6 +25,25 @@ const upload = multer({
     }
   },
 });
+
+// Helper function to upload to Cloudinary
+export const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'event-platform',
+        transformation: [{ width: 800, height: 600, crop: 'limit' }],
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+
+    const readableStream = Readable.from(fileBuffer);
+    readableStream.pipe(uploadStream);
+  });
+};
 
 export default upload;
 export { cloudinary };

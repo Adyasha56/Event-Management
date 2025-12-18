@@ -1,6 +1,6 @@
 import Event from '../models/Event.js';
 import RSVP from '../models/RSVP.js';
-import { cloudinary } from '../middleware/upload.js';
+import { cloudinary, uploadToCloudinary } from '../middleware/upload.js';
 
 export const createEvent = async (req, res) => {
   try {
@@ -18,8 +18,9 @@ export const createEvent = async (req, res) => {
 
     // Add image if uploaded
     if (req.file) {
-      eventData.imageUrl = req.file.path;
-      eventData.imagePublicId = req.file.filename;
+      const result = await uploadToCloudinary(req.file.buffer);
+      eventData.imageUrl = result.secure_url;
+      eventData.imagePublicId = result.public_id;
     }
 
     const event = await Event.create(eventData);
@@ -94,8 +95,9 @@ export const updateEvent = async (req, res) => {
       if (event.imagePublicId) {
         await cloudinary.uploader.destroy(event.imagePublicId);
       }
-      event.imageUrl = req.file.path;
-      event.imagePublicId = req.file.filename;
+      const result = await uploadToCloudinary(req.file.buffer);
+      event.imageUrl = result.secure_url;
+      event.imagePublicId = result.public_id;
     }
 
     await event.save();
